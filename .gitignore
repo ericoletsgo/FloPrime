@@ -395,6 +395,8 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+.env
+env.json
 
 # JetBrains Rider
 *.sln.iml

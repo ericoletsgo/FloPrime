@@ -1,12 +1,11 @@
 // Store playlists in localStorage
-let playlists = JSON.parse(localStorage.getItem('playlists')) || [];  // Fetch saved playlists
-let isPomodoroActive = true;  // Control whether Pomodoro is running
-let player;  // YouTube player instance
+let playlists = JSON.parse(localStorage.getItem('playlists')) || [];
+let player;
 
-// Initialize the YouTube Player when the API is ready
+// Initialize YouTube Player when API is ready
 function onYouTubeIframeAPIReady() {
   player = new YT.Player('player', {
-    videoId: 'BV-PA9gYrI4',  // Example video ID to start
+    videoId: 'BV-PA9gYrI4', 
     events: {
       'onReady': onPlayerReady,
       'onStateChange': onPlayerStateChange
@@ -24,160 +23,122 @@ function changeSpeed(speed) {
   }
 }
 
-function startPomodoro() {
-  const now = new Date();
-  const nextHour = new Date(now.setMinutes(0, 0, 0));  // Get next hour
-  const timeUntilNextHour = nextHour - now;
-
-  setTimeout(() => {
-    startFocusSession();
-    setInterval(pomodoroCycle, 60 * 60 * 1000);  // Repeat every hour
-  }, timeUntilNextHour);
+// Fetch YouTube API Key securely
+async function getApiKey() {
+  const response = await fetch('env.json');
+  const data = await response.json();
+  return data.YOUTUBE_API_KEY;
 }
 
-function pomodoroCycle() {
-  if (isPomodoroActive) {
-    startFocusSession();
-  }
-}
-
-function startFocusSession() {
-  // Focus session - 25 minutes
-  setTimeout(startBreakSession, 25 * 60 * 1000); // After 25 mins, start break
-}
-
-function startBreakSession() {
-  openBreakPopup();  // Open the break popup with shuffled video
-  setTimeout(startFocusSession, 5 * 60 * 1000);  // After 5 minutes, start focus again
-}
-
-function openBreakPopup() {
-  const videoId = shuffleVideos()[0];  // Get shuffled video
-  const popup = window.open('', '', 'width=800, height=600');
-  popup.document.write(`
-    <iframe width="100%" height="100%" 
-      src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
-      frameborder="0" allow="autoplay; fullscreen" allowfullscreen>
-    </iframe>
-  `);
-}
-
-function shuffleVideos() {
-  let allVideos = playlists.flatMap(playlist => playlist.videos);  // Combine videos from all playlists
-  for (let i = allVideos.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [allVideos[i], allVideos[j]] = [allVideos[j], allVideos[i]];  // Shuffle videos
-  }
-  return allVideos;
-}
-
-// Function to fetch playlist videos from the YouTube API
-async function fetchPlaylistVideos(playlistId) {
-    const apiKey = 'YOUR_YOUTUBE_API_KEY';  // Replace this with your actual API key
-    const apiUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}`;
-  
-    try {
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      const videoIds = data.items.map(item => item.snippet.resourceId.videoId);
-      return videoIds;  // Returns an array of video IDs
-    } catch (error) {
-      console.error('Error fetching playlist data:', error);
-      return [];  // Return an empty array in case of an error
-    }
-  }
-
-  // Store playlist data in localStorage
+// Store playlist in localStorage
 function storePlaylist(playlistId) {
-    fetchPlaylistVideos(playlistId).then(videoIds => {
-      let playlists = JSON.parse(localStorage.getItem('playlists')) || [];
-      playlists.push({ playlistId, videos: videoIds });
-      localStorage.setItem('playlists', JSON.stringify(playlists));
-      displayPlaylists();  // Display updated playlists
-    });
-  }
+  playlists.push({ playlistId, videos: [] });
+  localStorage.setItem('playlists', JSON.stringify(playlists));
+  fetchPlaylistVideos(playlistId);
+  displayPlaylists();
+}
 
-// Display the playlists from localStorage
+async function fetchPlaylistVideos(playlistId) {
+  const apiKey = await getApiKey();
+  const response = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}`);
+  const data = await response.json();
+  const videos = data.items.map(item => item.snippet.resourceId.videoId);
+  const playlist = playlists.find(pl => pl.playlistId === playlistId);
+  if (playlist) {
+    playlist.videos = videos;
+    localStorage.setItem('playlists', JSON.stringify(playlists));
+  }
+}
+
 function displayPlaylists() {
-    const playlistList = document.getElementById('playlist-list');
-    playlistList.innerHTML = '';  // Clear existing list
-  
-    const playlists = JSON.parse(localStorage.getItem('playlists')) || [];
-    playlists.forEach((playlist, index) => {
-      const listItem = document.createElement('li');
-      listItem.textContent = `Playlist ${index + 1}: ${playlist.playlistId}`;
-      playlistList.appendChild(listItem);
-    });
-  }
-  
+  const playlistList = document.getElementById('playlist-list');
+  playlistList.innerHTML = ''; // Clear list before re-rendering
 
-// Open video manually in a new tab (for testing purposes)
-document.getElementById('open-video-manual').addEventListener('click', function() {
-    const videoId = shuffleVideos()[0];  // Get a shuffled video ID
-    const popup = window.open('', '', 'width=800, height=600');
-    popup.document.write(`
-      <iframe width="100%" height="100%" 
-        src="https://www.youtube.com/embed/X_fZraQFnyI?si=o-scQdSy8_uQAqNT?autoplay=1" 
-        frameborder="0" allow="autoplay; fullscreen" allowfullscreen>
-      </iframe>
-    `);
+  playlists.forEach((playlist, index) => {
+    const listItem = document.createElement('li');
+    listItem.textContent = `Playlist ${index + 1}: ${playlist.playlistId}`;
+
+    // Create the remove button
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'Remove';
+    removeBtn.dataset.index = index; // Store index in a dataset attribute
+    removeBtn.classList.add('remove-playlist');
+
+    listItem.appendChild(removeBtn);
+    playlistList.appendChild(listItem);
   });
-  
 
-// Add Playlist URL and store it
-function addPlaylist(url) {
-  const playlist = {
-    url,
-    videos: ['videoId1', 'videoId2', 'videoId3']  // Dummy video IDs (replace with real data)
-  };
-  playlists.push(playlist);
+  // Attach event listener for removing playlist
+  document.querySelectorAll('.remove-playlist').forEach((button) => {
+    button.addEventListener('click', function () {
+      const index = this.dataset.index;
+      removePlaylist(index);
+    });
+  });
+}
+
+// Remove a playlist
+function removePlaylist(index) {
+  playlists.splice(index, 1);
   localStorage.setItem('playlists', JSON.stringify(playlists));
   displayPlaylists();
 }
 
-// Display the playlists
-function displayPlaylists() {
-  const playlistList = document.getElementById('playlist-list');
-  playlistList.innerHTML = '';
-  playlists.forEach((playlist, index) => {
-    const listItem = document.createElement('li');
-    listItem.textContent = `Playlist ${index + 1}: ${playlist.url}`;
-    playlistList.appendChild(listItem);
+function getShuffledVideo() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get("playlists", (data) => {
+      let allVideos = [];
+
+      if (data.playlists && data.playlists.length > 0) {
+        allVideos = data.playlists.flatMap(playlist => playlist.videos);
+      } else {
+        allVideos = [
+          "sNQaxp0_gkY", "6C5cTQLwzkY", "a8c5wmeOL9o",
+          "vUOKwfkbigY", "k83LrLJ1BAs", "Zcp9L_2X51g"
+        ]; // Default playlist videos
+      }
+
+      resolve(allVideos[Math.floor(Math.random() * allVideos.length)]);
+    });
   });
 }
 
-// Event listener for adding playlist
-document.getElementById('add-playlist').addEventListener('click', function () {
-  const url = document.getElementById('playlist-url').value;
-  if (url) {
-    addPlaylist(url);
-    document.getElementById('playlist-url').value = '';  // Clear input field
-  } else {
-    alert('Please enter a valid playlist URL');
+// for testing new tab open
+document.getElementById("open-video-manual").addEventListener("click", async function() {
+  const videoId = await getShuffledVideo();
+  window.open(`https://www.youtube.com/embed/${videoId}?autoplay=1`, '_blank');
+});
+
+function loadYouTubeAPI() {
+  if (!document.getElementById('youtube-api')) {
+    const script = document.createElement('script');
+    script.src = "https://www.youtube.com/iframe_api";
+    script.id = 'youtube-api';
+    document.body.appendChild(script);
   }
-});
+}
 
-// Speed control buttons
-document.getElementById('increase-speed').addEventListener('click', function () {
-  const currentSpeed = player.getPlaybackRate();
-  changeSpeed(currentSpeed + 0.25);
-});
+// Function to check current time and trigger video popup at 25 and 55 minutes past the hour
+function checkVideoSchedule() {
+  const now = new Date();
+  const minutes = now.getMinutes();
+  console.log(`Current time: ${now.getHours()}:${minutes}`);
 
-document.getElementById('decrease-speed').addEventListener('click', function () {
-  const currentSpeed = player.getPlaybackRate();
-  changeSpeed(currentSpeed - 0.25);
-});
+  if (minutes === 25 || minutes === 55) {
+    console.log("Triggering video popup");
+    openShuffledVideoPopup();
+  }
+}
 
-document.getElementById('reset-speed').addEventListener('click', function () {
-  changeSpeed(1.0);  // Reset to normal speed
-});
+// Function to open shuffled video popup
+async function openShuffledVideoPopup() {
+  const videoId = await getShuffledVideo();
+  window.open(`https://www.youtube.com/embed/${videoId}?autoplay=1`, '_blank');
+}
 
-// Disable Pomodoro button
-document.getElementById('disable-pomodoro').addEventListener('click', function () {
-  isPomodoroActive = false;
-  alert('Pomodoro timer has been disabled.');
-});
+// Run video schedule check every minute
+setInterval(checkVideoSchedule, 60 * 1000);
 
-// Display saved playlists when the popup opens
+// Initialize UI on popup load
 displayPlaylists();
-startPomodoro();  // Start the Pomodoro timer
+loadYouTubeAPI();

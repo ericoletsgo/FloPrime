@@ -1,34 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTube Playlist Shuffler</title>
-  <script src="https://www.youtube.com/iframe_api"></script> <!-- YouTube Player API -->
+  <title>Stretch It Out</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.youtube.com https://www.youtube.com/iframe_api 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src 'self' https://www.youtube.com;">
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-  <h2>YouTube Playlist Shuffler</h2>
-  
-  <div>
-    <input type="text" id="playlist-url" placeholder="Enter YouTube Playlist URL" />
-    <button id="add-playlist">Add Playlist</button>
-  </div>
-  
+  <h2>Stretch It Out</h2>
+
+  <h3>Add a YouTube Playlist:</h3>
+  <input type="text" id="playlist-url" placeholder="Enter YouTube Playlist URL" />
+  <button id="add-playlist">Add Playlist</button>
+
   <h3>Playlists:</h3>
-  <ul id="playlist-list">
-  </ul>
+  <ul id="playlist-list"></ul>
 
-  <h3>Control Video Speed:</h3>
-  <button id="increase-speed">Increase Speed</button>
-  <button id="decrease-speed">Decrease Speed</button>
-  <button id="reset-speed">Reset Speed</button>
-
-  <button id="disable-pomodoro">Disable Pomodoro</button>
-  <button id="open-video-manual">Open Video in New Tab</button> <!-- Manual open video button -->
+  <button id="open-video-manual">Open Video in New Tab</button>
 
   <div id="player"></div> <!-- YouTube Video Embed -->
 
   <script src="popup.js"></script>
 </body>
+
 </html>
