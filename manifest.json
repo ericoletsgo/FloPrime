@@ -1,0 +1,14 @@
+{
+    "manifest_version": 3,
+    "name": "YouTube Markdown Converter",
+    "version": "1.0",
+    "action": {
+      "default_popup": "popup.html"
+    },
+    "permissions": ["tabs"],
+    "host_permissions": ["*://www.youtube.com/*", "*://www.youtube-nocookie.com/*"],
+    "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com"
+    }
+  }
+  
