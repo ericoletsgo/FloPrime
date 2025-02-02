@@ -1,14 +1,16 @@
 {
     "manifest_version": 3,
-    "name": "YouTube Markdown Converter",
+    "name": "YouTube Playlist Shuffler",
     "version": "1.0",
+    "description": "Add multiple playlists, shuffle videos, and integrate Pomodoro.",
+    "permissions": ["storage"],
     "action": {
       "default_popup": "popup.html"
     },
-    "permissions": ["tabs"],
-    "host_permissions": ["*://www.youtube.com/*", "*://www.youtube-nocookie.com/*"],
     "content_security_policy": {
-      "extension_pages": "script-src 'self'; object-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com"
+      "script-src": "'self' https://www.youtube.com",
+      "object-src": "'self'",
+      "frame-src": "https://www.youtube.com"
     }
   }
   
