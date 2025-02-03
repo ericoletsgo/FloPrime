@@ -6,10 +6,10 @@
   "permissions": ["storage", "alarms", "tabs"],
   "host_permissions": ["https://www.googleapis.com/"],
   "action": {
-    "default_popup": "Extension/popup.html",
+    "default_popup": "popup.html",
     "default_icon": "icon.png"
   },
   "background": {
-    "service_worker": "Extension/background.js"
+    "service_worker": "background.js"
   }
 }
