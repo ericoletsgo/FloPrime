@@ -23,7 +23,7 @@ function changeSpeed(speed) {
   }
 }
 
-// Fetch YouTube API Key securely
+// Fetch YouTube API Key from env.json
 async function getApiKey() {
   const response = await fetch('env.json');
   const data = await response.json();
@@ -47,6 +47,7 @@ async function fetchPlaylistVideos(playlistId) {
   if (playlist) {
     playlist.videos = videos;
     localStorage.setItem('playlists', JSON.stringify(playlists));
+    chrome.storage.local.set({ playlists });
   }
 }
 
@@ -81,6 +82,7 @@ function displayPlaylists() {
 function removePlaylist(index) {
   playlists.splice(index, 1);
   localStorage.setItem('playlists', JSON.stringify(playlists));
+  chrome.storage.local.set({ playlists });
   displayPlaylists();
 }
 
@@ -91,22 +93,33 @@ function getShuffledVideo() {
 
       if (data.playlists && data.playlists.length > 0) {
         allVideos = data.playlists.flatMap(playlist => playlist.videos);
-      } else {
-        allVideos = [
-          "sNQaxp0_gkY", "6C5cTQLwzkY", "a8c5wmeOL9o",
-          "vUOKwfkbigY", "k83LrLJ1BAs", "Zcp9L_2X51g"
-        ]; // Default playlist videos
       }
 
-      resolve(allVideos[Math.floor(Math.random() * allVideos.length)]);
+      if (allVideos.length > 0) {
+        resolve(allVideos[Math.floor(Math.random() * allVideos.length)]);
+      } else {
+        resolve(null);
+      }
     });
   });
 }
 
-// for testing new tab open
+// Open video manually in a new tab (for testing purposes)
 document.getElementById("open-video-manual").addEventListener("click", async function() {
   const videoId = await getShuffledVideo();
-  window.open(`https://www.youtube.com/embed/${videoId}?autoplay=1`, '_blank');
+  if (videoId) {
+    window.open(`https://www.youtube.com/embed/${videoId}?autoplay=1`, '_blank');
+  } else {
+    alert('No videos available in the playlists.');
+  }
+});
+
+document.getElementById("add-playlist").addEventListener("click", function() {
+  const playlistUrl = document.getElementById("playlist-url").value;
+  const playlistId = playlistUrl.split("list=")[1];
+  if (playlistId) {
+    storePlaylist(playlistId);
+  }
 });
 
 function loadYouTubeAPI() {
@@ -114,7 +127,6 @@ function loadYouTubeAPI() {
     const script = document.createElement('script');
     script.src = "https://www.youtube.com/iframe_api";
     script.id = 'youtube-api';
-    document.body.appendChild(script);
   }
 }
 
@@ -133,7 +145,11 @@ function checkVideoSchedule() {
 // Function to open shuffled video popup
 async function openShuffledVideoPopup() {
   const videoId = await getShuffledVideo();
-  window.open(`https://www.youtube.com/embed/${videoId}?autoplay=1`, '_blank');
+  if (videoId) {
+    window.open(`https://www.youtube.com/embed/${videoId}?autoplay=1`, '_blank');
+  } else {
+    alert('No videos available in the playlists.');
+  }
 }
 
 // Run video schedule check every minute
