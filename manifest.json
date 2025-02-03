@@ -3,13 +3,13 @@
   "name": "YouTube Playlist Shuffler",
   "version": "1.0",
   "description": "Add multiple playlists, shuffle videos, and integrate Pomodoro.",
-  "permissions": ["storage"],
-  "host_permissions": ["https://www.googleapis.com/"],  
+  "permissions": ["storage", "alarms", "tabs"],
+  "host_permissions": ["https://www.googleapis.com/"],
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "Extension/popup.html",
     "default_icon": "icon.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "Extension/background.js"
   }
 }

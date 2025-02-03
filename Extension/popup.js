@@ -134,7 +134,8 @@ function loadYouTubeAPI() {
 function checkVideoSchedule() {
   const now = new Date();
   const minutes = now.getMinutes();
-  console.log(`Current time: ${now.getHours()}:${minutes}`);
+  const seconds = now.getSeconds();
+  console.log(`Current time: ${now.getHours()}:${minutes}:${seconds}`);
 
   if (minutes === 25 || minutes === 55) {
     console.log("Triggering video popup");
@@ -152,8 +153,8 @@ async function openShuffledVideoPopup() {
   }
 }
 
-// Run video schedule check every minute
-setInterval(checkVideoSchedule, 60 * 1000);
+// Run video schedule check every second
+setInterval(checkVideoSchedule, 1000);
 
 // Initialize UI on popup load
 displayPlaylists();
