@@ -1,7 +1,4 @@
-console.log("Background script loaded");
-
-// Default state (Pomodoro is enabled)
-chrome.storage.local.set({ pomodoroEnabled: true });
+let lastPopupTime = null;
 
 // Fetch YouTube API Key securely
 async function getApiKey() {
@@ -47,12 +44,13 @@ function getShuffledVideo() {
 function checkVideoSchedule() {
   const now = new Date();
   const minutes = now.getMinutes();
-  const seconds = now.getSeconds();
-  console.log(`Current time: ${now.getHours()}:${minutes}:${seconds}`);
 
-  if (minutes === 25 || minutes === 55) {
-    console.log("Triggering video popup");
+  if ((minutes === 25 || minutes === 55) && (!lastPopupTime || now - lastPopupTime >= 5 * 60 * 1000)) {
     openShuffledVideoPopup();
+    lastPopupTime = now;
+  }
+  if (minutes === 0 || minutes === 30) {
+    sendNotification("Reminder", "Time to get back to work!");
   }
 }
 
@@ -66,8 +64,26 @@ async function openShuffledVideoPopup() {
   }
 }
 
-// Run video schedule check every second
-setInterval(checkVideoSchedule, 1000);
+// Function to send a notification
+function sendNotification(title, message) {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'icon.png',
+    title: title,
+    message: message,
+    priority: 2
+  });
+}
+
+// Set up an alarm to wake up the service worker every minute
+chrome.alarms.create('checkVideoSchedule', { periodInMinutes: 1 });
+
+// Listen for the alarm to trigger the checkVideoSchedule function
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'checkVideoSchedule') {
+    checkVideoSchedule();
+  }
+});
 
 // Function to enable/disable Pomodoro
 chrome.runtime.onMessage.addListener((message) => {

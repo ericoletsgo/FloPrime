@@ -14,6 +14,7 @@ function onYouTubeIframeAPIReady() {
 }
 
 function onPlayerReady(event) {
+  event.target.setPlaybackRate(3);
   event.target.playVideo();
 }
 
@@ -129,32 +130,6 @@ function loadYouTubeAPI() {
     script.id = 'youtube-api';
   }
 }
-
-// Function to check current time and trigger video popup at 25 and 55 minutes past the hour
-function checkVideoSchedule() {
-  const now = new Date();
-  const minutes = now.getMinutes();
-  const seconds = now.getSeconds();
-  console.log(`Current time: ${now.getHours()}:${minutes}:${seconds}`);
-
-  if (minutes === 25 || minutes === 55) {
-    console.log("Triggering video popup");
-    openShuffledVideoPopup();
-  }
-}
-
-// Function to open shuffled video popup
-async function openShuffledVideoPopup() {
-  const videoId = await getShuffledVideo();
-  if (videoId) {
-    window.open(`https://www.youtube.com/embed/${videoId}?autoplay=1`, '_blank');
-  } else {
-    alert('No videos available in the playlists.');
-  }
-}
-
-// Run video schedule check every second
-setInterval(checkVideoSchedule, 1000);
 
 // Initialize UI on popup load
 displayPlaylists();
