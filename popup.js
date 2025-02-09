@@ -1,6 +1,7 @@
-// Store playlists in localStorage
 let playlists = JSON.parse(localStorage.getItem('playlists')) || [];
 let player;
+let disableStartTime = JSON.parse(localStorage.getItem('disableStartTime')) || 0;
+let disableEndTime = JSON.parse(localStorage.getItem('disableEndTime')) || 0;
 
 // Initialize YouTube Player when API is ready
 function onYouTubeIframeAPIReady() {
@@ -128,9 +129,111 @@ function loadYouTubeAPI() {
     const script = document.createElement('script');
     script.src = "https://www.youtube.com/iframe_api";
     script.id = 'youtube-api';
+      }
+}
+
+// Function to check if the current time is within the disable period
+function isWithinDisablePeriod() {
+  const now = new Date();
+  const currentHour = now.getHours();
+
+  if (disableStartTime < disableEndTime) {
+    return currentHour >= disableStartTime && currentHour < disableEndTime;
+  } else {
+    return currentHour >= disableStartTime || currentHour < disableEndTime;
   }
 }
 
-// Initialize UI on popup load
+// Function to check current time and trigger video popup at 25 and 55 minutes past the hour
+function checkVideoSchedule() {
+  if (isWithinDisablePeriod()) {
+    console.log("Within disable period. No action taken.");
+    return;
+  }
+
+  const now = new Date();
+  const minutes = now.getMinutes();
+  const seconds = now.getSeconds();
+  console.log(`Current time: ${now.getHours()}:${minutes}:${seconds}`);
+
+  if ((minutes === 25 || minutes === 55) && (!lastPopupTime || now - lastPopupTime >= 5 * 60 * 1000)) {
+    console.log("Triggering video popup");
+    openShuffledVideoPopup();
+    lastPopupTime = now;
+  }
+
+  if (minutes === 0 || minutes === 30) {
+    sendNotification("Reminder", "Time to get back to work!");
+  }
+}
+
+// Function to open shuffled video popup
+async function openShuffledVideoPopup() {
+  const videoId = await getShuffledVideo();
+  if (videoId) {
+    chrome.tabs.create({ url: `https://www.youtube.com/embed/${videoId}?autoplay=1` });
+  } else {
+    console.log('No videos available in the playlists.');
+  }
+}
+
+// Function to send a notification
+function sendNotification(title, message) {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'Extension/icons/icon48.png', // Ensure this path is correct
+    title: title,
+    message: message,
+    priority: 2
+  });
+}
+
+// Set up an alarm to wake up the service worker every minute
+chrome.alarms.create('checkVideoSchedule', { periodInMinutes: 1 });
+
+// Listen for the alarm to trigger the checkVideoSchedule function
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'checkVideoSchedule') {
+    checkVideoSchedule();
+  }
+});
+
+// Function to enable/disable Pomodoro
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === "togglePomodoro") {
+    chrome.storage.local.set({ pomodoroEnabled: message.enabled });
+    console.log("Pomodoro Enabled:", message.enabled);
+  }
+});
 displayPlaylists();
 loadYouTubeAPI();
+
+// Update disable times display
+function updateDisableTimesDisplay() {
+  document.getElementById('disable-start-time').textContent = `Disable Start Time: ${disableStartTime}:00`;
+  document.getElementById('disable-end-time').textContent = `Disable End Time: ${disableEndTime}:00`;
+}
+
+// Increase or decrease disable start time
+function changeDisableStartTime(increment) {
+  disableStartTime = (disableStartTime + increment + 24) % 24;
+  localStorage.setItem('disableStartTime', JSON.stringify(disableStartTime));
+  updateDisableTimesDisplay();
+}
+
+// Increase or decrease disable end time
+function changeDisableEndTime(increment) {
+  disableEndTime = (disableEndTime + increment + 24) % 24;
+  localStorage.setItem('disableEndTime', JSON.stringify(disableEndTime));
+  updateDisableTimesDisplay();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('disable-start-time-up').addEventListener('click', () => changeDisableStartTime(1));
+  document.getElementById('disable-start-time-down').addEventListener('click', () => changeDisableStartTime(-1));
+  document.getElementById('disable-end-time-up').addEventListener('click', () => changeDisableEndTime(1));
+  document.getElementById('disable-end-time-down').addEventListener('click', () => changeDisableEndTime(-1));
+
+  // Initialize disable times display
+  updateDisableTimesDisplay();
+});

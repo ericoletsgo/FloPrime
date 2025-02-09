@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Best rest by a stretch!</title>
-  <!--<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.youtube.com https://www.youtube.com/iframe_api 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src 'self' https://www.youtube.com;">
+<!--<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.youtube.com https://www.youtube.com/iframe_api 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src 'self' https://www.youtube.com;">
 -->
   <link rel="stylesheet" href="style.css">
 </head>
@@ -23,6 +23,22 @@
   <button id="open-video-manual">Test</button>
 
   <div id="player"></div> <!-- YouTube Video Embed -->
+
+  <!-- Disable Start Time Section -->
+  <div>
+    <h3>Disable Start Time</h3>
+    <button id="disable-start-time-up">▲</button>
+    <span id="disable-start-time">Disable Start Time: 0:00</span>
+    <button id="disable-start-time-down">▼</button>
+  </div>
+
+  <!-- Disable End Time Section -->
+  <div>
+    <h3>Disable End Time</h3>
+    <button id="disable-end-time-up">▲</button>
+    <span id="disable-end-time">Disable End Time: 0:00</span>
+    <button id="disable-end-time-down">▼</button>
+  </div>
 
   <script src="popup.js"></script>
 </body>
