@@ -1,94 +1,243 @@
 let lastPopupTime = null;
 
-// Fetch YouTube API Key securely
+// Using State now
+const AppState = {
+  async initialize() {
+    const stored = await chrome.storage.local.get([
+      'extensionEnabled',
+      'playlists',
+      'pomodoroEnabled'
+    ]);
+    
+    return {
+      extensionEnabled: stored.extensionEnabled ?? true,
+      playlists: stored.playlists ?? [],
+      pomodoroEnabled: stored.pomodoroEnabled ?? false
+    };
+  },
+  
+  async setState(updates) {
+    await chrome.storage.local.set(updates);
+  }
+};
+
+// Limit Api calls
+const RateLimiter = {
+  lastCall: 0,
+  minInterval: 1000,
+  
+  async throttle() {
+    const now = Date.now();
+    const timeToWait = Math.max(0, this.minInterval - (now - this.lastCall));
+    
+    if (timeToWait > 0) {
+      await new Promise(resolve => setTimeout(resolve, timeToWait));
+    }
+    
+    this.lastCall = Date.now();
+  }
+};
+
+// Fetch with retry logic
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => 
+        setTimeout(resolve, 1000 * Math.pow(2, i))
+      );
+    }
+  }
+}
+
+// API Key Management
 async function getApiKey() {
-  const response = await fetch('env.json');
-  const data = await response.json();
-  return data.YOUTUBE_API_KEY;
+  try {
+    const state = await AppState.initialize();
+    if (!state.extensionEnabled) return null;
+    
+    const data = await fetchWithRetry('env.json');
+    return data.YOUTUBE_API_KEY;
+  } catch (error) {
+    console.error('Error fetching API key:', error);
+    return null;
+  }
 }
 
-// Fetch playlist videos from YouTube API
+// Fetch Playlist
 async function fetchPlaylistVideos(playlistId) {
-  const apiKey = await getApiKey();
-  const response = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}`);
-  const data = await response.json();
-  const videos = data.items.map(item => item.snippet.resourceId.videoId);
-  return videos;
+  try {
+    const state = await AppState.initialize();
+    if (!state.extensionEnabled) return [];
+    
+    await RateLimiter.throttle();
+    const apiKey = await getApiKey();
+    if (!apiKey) throw new Error('API key not found');
+    
+    const data = await fetchWithRetry(
+      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}`
+    );
+    
+    return data.items.map(item => item.snippet.resourceId.videoId);
+  } catch (error) {
+    console.error('Error fetching playlist videos:', error);
+    return [];
+  }
 }
 
-// Get shuffled video from playlists
-function getShuffledVideo() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get("playlists", async (data) => {
-      let allVideos = [];
+// Video Selection
+async function getShuffledVideo() {
+  const state = await AppState.initialize();
+  if (!state.extensionEnabled) return null;
 
-      if (data.playlists && data.playlists.length > 0) {
-        for (const playlist of data.playlists) {
-          if (playlist.videos.length === 0) {
-            playlist.videos = await fetchPlaylistVideos(playlist.playlistId);
-          }
-          allVideos = allVideos.concat(playlist.videos);
+  try {
+    const data = await chrome.storage.local.get("playlists");
+    let allVideos = [];
+
+    if (data.playlists?.length > 0) {
+      for (const playlist of data.playlists) {
+        if (!playlist.videos?.length) {
+          playlist.videos = await fetchPlaylistVideos(playlist.playlistId);
         }
+        allVideos = allVideos.concat(playlist.videos);
       }
+    }
 
-      if (allVideos.length > 0) {
-        resolve(allVideos[Math.floor(Math.random() * allVideos.length)]);
-      } else {
-        resolve(null);
-      }
+    return allVideos.length > 0 
+      ? allVideos[Math.floor(Math.random() * allVideos.length)]
+      : null;
+  } catch (error) {
+    console.error('Error getting shuffled video:', error);
+    return null;
+  }
+}
+
+// Schedule Management
+function isScheduledTime(date = new Date()) {
+  const minutes = date.getMinutes();
+  return {
+    isBreakTime: minutes === 25 || minutes === 55,
+    isWorkTime: minutes === 0 || minutes === 30
+  };
+}
+
+// Notification Management
+const NotificationManager = {
+  lastNotification: null,
+  minInterval: 5 * 60 * 1000,
+  
+  canShowNotification() {
+    const now = Date.now();
+    return !this.lastNotification || 
+           (now - this.lastNotification) >= this.minInterval;
+  },
+  
+  async show(title, message) {
+    if (!this.canShowNotification()) return;
+    
+    this.lastNotification = Date.now();
+    await chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icons/icon48.png',
+      title,
+      message,
+      priority: 2
     });
-  });
-}
+  }
+};
 
-// Function to check current time and trigger video popup at 25 and 55 minutes past the hour
-function checkVideoSchedule() {
+// Schedule Checking
+async function checkVideoSchedule() {
+  const state = await AppState.initialize();
+  if (!state.extensionEnabled) {
+    console.log("Extension is disabled. Skipping schedule check.");
+    return;
+  }
+
   const now = new Date();
-  const minutes = now.getMinutes();
-
-  if ((minutes === 25 || minutes === 55) && (!lastPopupTime || now - lastPopupTime >= 5 * 60 * 1000)) {
-    openShuffledVideoPopup();
+  const schedule = isScheduledTime(now);
+  
+  if (schedule.isBreakTime && 
+      (!lastPopupTime || now - lastPopupTime >= 5 * 60 * 1000)) {
+    await openShuffledVideoPopup();
     lastPopupTime = now;
+    await NotificationManager.show(
+      "Rest your eyes and body", 
+      "It's time to take a break!"
+    );
   }
-  if (minutes === 0 || minutes === 30) {
-    sendNotification("Reminder", "Time to get back to work!");
+  
+  if (schedule.isWorkTime) {
+    await NotificationManager.show(
+      "Back to Work", 
+      "Break time is over!"
+    );
   }
 }
 
-// Function to open shuffled video popup
+// Video Popup Management
 async function openShuffledVideoPopup() {
-  const videoId = await getShuffledVideo();
-  if (videoId) {
-    chrome.tabs.create({ url: `https://www.youtube.com/embed/${videoId}?autoplay=1` });
-  } else {
-    console.log('No videos available in the playlists.');
+  const state = await AppState.initialize();
+  if (!state.extensionEnabled) {
+    console.log("Extension is disabled. Skipping video popup.");
+    return;
+  }
+
+  try {
+    const videoId = await getShuffledVideo();
+    if (videoId) {
+      await chrome.tabs.create({ 
+        url: `https://www.youtube.com/embed/${videoId}?autoplay=1`
+      });
+    } else {
+      console.log('No videos available in the playlists.');
+    }
+  } catch (error) {
+    console.error('Error opening video popup:', error);
   }
 }
 
-// Function to send a notification
-function sendNotification(title, message) {
-  chrome.notifications.create({
-    type: 'basic',
-    iconUrl: 'icon.png',
-    title: title,
-    message: message,
-    priority: 2
-  });
+// Storage Management
+async function checkStorageQuota() {
+  if (navigator.storage?.estimate) {
+    try {
+      const {usage, quota} = await navigator.storage.estimate();
+      const percentageUsed = (usage / quota) * 100;
+      
+      if (percentageUsed > 80) {
+        console.warn(`Storage usage is high (${percentageUsed.toFixed(2)}%)`);
+        // Implement cleanup if needed
+      }
+    } catch (error) {
+      console.error('Error checking storage quota:', error);
+    }
+  }
 }
 
-// Set up an alarm to wake up the service worker every minute
+// Initialize alarms and listeners
 chrome.alarms.create('checkVideoSchedule', { periodInMinutes: 1 });
 
-// Listen for the alarm to trigger the checkVideoSchedule function
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'checkVideoSchedule') {
     checkVideoSchedule();
   }
 });
 
-// Function to enable/disable Pomodoro
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener(async (message) => {
   if (message.action === "togglePomodoro") {
-    chrome.storage.local.set({ pomodoroEnabled: message.enabled });
-    console.log("Pomodoro Enabled:", message.enabled);
+    await AppState.setState({ pomodoroEnabled: message.enabled });
   }
 });
+
+// setup
+(async () => {
+  await AppState.initialize();
+  await checkStorageQuota();
+})();
+
+// storage check
+setInterval(checkStorageQuota, 24 * 60 * 60 * 1000);
