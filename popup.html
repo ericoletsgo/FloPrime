@@ -4,40 +4,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Best rest by a stretch!</title>
-<!--<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.youtube.com https://www.youtube.com/iframe_api 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src 'self' https://www.youtube.com;">
--->
+  <title>Pomodoro Physical Break</title>
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
   <h2>Catch a break!</h2>
 
-  <h3>Add a relaxing Playlist:</h3>
+  <h3>Add a YouTube Playlist:</h3>
   <input type="text" id="playlist-url" placeholder="Enter YouTube Playlist URL" />
   <button id="add-playlist">Add Playlist</button>
 
   <h3>Playlists:</h3>
   <ul id="playlist-list"></ul>
 
-  <button id="open-video-manual">Test</button>
+  <button id="open-video-manual">Open Video in New Tab</button>
 
   <div id="player"></div> <!-- YouTube Video Embed -->
 
-  <!-- Disable Start Time Section -->
+  <!-- Extension Enabled Toggle -->
   <div>
-    <h3>Disable Start Time</h3>
-    <button id="disable-start-time-up">▲</button>
-    <span id="disable-start-time">Disable Start Time: 0:00</span>
-    <button id="disable-start-time-down">▼</button>
-  </div>
-
-  <!-- Disable End Time Section -->
-  <div>
-    <h3>Disable End Time</h3>
-    <button id="disable-end-time-up">▲</button>
-    <span id="disable-end-time">Disable End Time: 0:00</span>
-    <button id="disable-end-time-down">▼</button>
+    <h3>Extension Status</h3>
+    <button id="toggle-extension">Toggle Extension</button>
+    <span id="extension-status">Extension is Enabled</span>
   </div>
 
   <script src="popup.js"></script>

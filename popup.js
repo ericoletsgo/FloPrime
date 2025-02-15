@@ -1,7 +1,7 @@
 let playlists = JSON.parse(localStorage.getItem('playlists')) || [];
 let player;
-let disableStartTime = JSON.parse(localStorage.getItem('disableStartTime')) || 0;
-let disableEndTime = JSON.parse(localStorage.getItem('disableEndTime')) || 0;
+let extensionEnabled = JSON.parse(localStorage.getItem('extensionEnabled')) !== null ? JSON.parse(localStorage.getItem('extensionEnabled')) : true;
+let lastPopupTime = null;
 
 // Initialize YouTube Player when API is ready
 function onYouTubeIframeAPIReady() {
@@ -108,6 +108,10 @@ function getShuffledVideo() {
 
 // Open video manually in a new tab (for testing purposes)
 document.getElementById("open-video-manual").addEventListener("click", async function() {
+  if (!extensionEnabled) {
+    alert('Extension is disabled.');
+    return;
+  }
   const videoId = await getShuffledVideo();
   if (videoId) {
     window.open(`https://www.youtube.com/embed/${videoId}?autoplay=1`, '_blank');
@@ -132,22 +136,35 @@ function loadYouTubeAPI() {
       }
 }
 
-// Function to check if the current time is within the disable period
-function isWithinDisablePeriod() {
-  const now = new Date();
-  const currentHour = now.getHours();
+// Initialize UI on popup load
+displayPlaylists();
+loadYouTubeAPI();
 
-  if (disableStartTime < disableEndTime) {
-    return currentHour >= disableStartTime && currentHour < disableEndTime;
-  } else {
-    return currentHour >= disableStartTime || currentHour < disableEndTime;
-  }
+// Update extension enabled display
+function updateExtensionEnabledDisplay() {
+  const status = extensionEnabled ? "Enabled" : "Disabled";
+  document.getElementById('extension-status').textContent = `Extension is ${status}`;
 }
+
+// Toggle extension enabled state
+function toggleExtensionEnabled() {
+  extensionEnabled = !extensionEnabled;
+  localStorage.setItem('extensionEnabled', JSON.stringify(extensionEnabled));
+  updateExtensionEnabledDisplay();
+}
+
+// Attach event listener for toggle button
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('toggle-extension').addEventListener('click', toggleExtensionEnabled);
+
+  // Initialize extension enabled display
+  updateExtensionEnabledDisplay();
+});
 
 // Function to check current time and trigger video popup at 25 and 55 minutes past the hour
 function checkVideoSchedule() {
-  if (isWithinDisablePeriod()) {
-    console.log("Within disable period. No action taken.");
+  if (!extensionEnabled) {
+    console.log("Extension is disabled. No action taken.");
     return;
   }
 
@@ -159,6 +176,7 @@ function checkVideoSchedule() {
   if ((minutes === 25 || minutes === 55) && (!lastPopupTime || now - lastPopupTime >= 5 * 60 * 1000)) {
     console.log("Triggering video popup");
     openShuffledVideoPopup();
+    sendNotification("Rest your eyes and body", "It's time to take a break!");
     lastPopupTime = now;
   }
 
@@ -204,36 +222,4 @@ chrome.runtime.onMessage.addListener((message) => {
     chrome.storage.local.set({ pomodoroEnabled: message.enabled });
     console.log("Pomodoro Enabled:", message.enabled);
   }
-});
-displayPlaylists();
-loadYouTubeAPI();
-
-// Update disable times display
-function updateDisableTimesDisplay() {
-  document.getElementById('disable-start-time').textContent = `Disable Start Time: ${disableStartTime}:00`;
-  document.getElementById('disable-end-time').textContent = `Disable End Time: ${disableEndTime}:00`;
-}
-
-// Increase or decrease disable start time
-function changeDisableStartTime(increment) {
-  disableStartTime = (disableStartTime + increment + 24) % 24;
-  localStorage.setItem('disableStartTime', JSON.stringify(disableStartTime));
-  updateDisableTimesDisplay();
-}
-
-// Increase or decrease disable end time
-function changeDisableEndTime(increment) {
-  disableEndTime = (disableEndTime + increment + 24) % 24;
-  localStorage.setItem('disableEndTime', JSON.stringify(disableEndTime));
-  updateDisableTimesDisplay();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('disable-start-time-up').addEventListener('click', () => changeDisableStartTime(1));
-  document.getElementById('disable-start-time-down').addEventListener('click', () => changeDisableStartTime(-1));
-  document.getElementById('disable-end-time-up').addEventListener('click', () => changeDisableEndTime(1));
-  document.getElementById('disable-end-time-down').addEventListener('click', () => changeDisableEndTime(-1));
-
-  // Initialize disable times display
-  updateDisableTimesDisplay();
 });
