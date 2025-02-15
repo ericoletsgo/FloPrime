@@ -68,8 +68,36 @@ async function getApiKey() {
   }
 }
 
-// Fetch Playlist
-async function fetchPlaylistVideos(playlistId) {
+// Add this function to fetch playlist details
+async function fetchPlaylistDetails(playlistId) {
+  try {
+    const state = await AppState.initialize();
+    if (!state.extensionEnabled) return null;
+    
+    await RateLimiter.throttle();
+    const apiKey = await getApiKey();
+    if (!apiKey) throw new Error('API key not found');
+    
+    const data = await fetchWithRetry(
+      `https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${apiKey}`
+    );
+    
+    if (data.items && data.items.length > 0) {
+      return {
+        id: playlistId,
+        name: data.items[0].snippet.title,
+        videos: []
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching playlist details:', error);
+    return null;
+  }
+}
+
+// Modify the fetchPlaylistVideos function to include playlist name
+async function fetchPlaylistVideos(playlist) {
   try {
     const state = await AppState.initialize();
     if (!state.extensionEnabled) return [];
@@ -79,7 +107,7 @@ async function fetchPlaylistVideos(playlistId) {
     if (!apiKey) throw new Error('API key not found');
     
     const data = await fetchWithRetry(
-      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}`
+      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlist.id}&key=${apiKey}`
     );
     
     return data.items.map(item => item.snippet.resourceId.videoId);
@@ -101,7 +129,7 @@ async function getShuffledVideo() {
     if (data.playlists?.length > 0) {
       for (const playlist of data.playlists) {
         if (!playlist.videos?.length) {
-          playlist.videos = await fetchPlaylistVideos(playlist.playlistId);
+          playlist.videos = await fetchPlaylistVideos(playlist);
         }
         allVideos = allVideos.concat(playlist.videos);
       }
