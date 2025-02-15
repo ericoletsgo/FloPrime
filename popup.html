@@ -1,35 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pomodoro Physical Break</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-  <h2>Catch a break!</h2>
+  <div id="status-message"></div>
+  
+  <div class="content">
+    <div class="header">  
+      <h2>Catch a break!</h2>
+      
+      <div class="extension-control">
+        <button id="toggle-extension">Toggle Extension</button>
+        <span id="extension-status">Extension is Enabled</span>
+      </div>
+    </div>
+    
+    <div class="input-group">
+      <h3>Add a YouTube Playlist:</h3>
+      <input 
+        type="text" 
+        id="playlist-url" 
+        placeholder="Enter YouTube Playlist URL (e.g., https://www.youtube.com/playlist?list=...)" 
+      />
+      <button id="add-playlist">Add Playlist</button>
+    </div>
 
-  <h3>Add a YouTube Playlist:</h3>
-  <input type="text" id="playlist-url" placeholder="Enter YouTube Playlist URL" />
-  <button id="add-playlist">Add Playlist</button>
+    <div class="playlists-section">
+      <h3>Your Playlists:</h3>
+      <ul id="playlist-list"></ul>
+    </div>
 
-  <h3>Playlists:</h3>
-  <ul id="playlist-list"></ul>
+    <button id="open-video-manual">Open Random Video Now</button>
 
-  <button id="open-video-manual">Open Video in New Tab</button>
-
-  <div id="player"></div> <!-- YouTube Video Embed -->
-
-  <!-- Extension Enabled Toggle -->
-  <div>
-    <h3>Extension Status</h3>
-    <button id="toggle-extension">Toggle Extension</button>
-    <span id="extension-status">Extension is Enabled</span>
+    <div id="player"></div>
   </div>
 
   <script src="popup.js"></script>
 </body>
-
 </html>
